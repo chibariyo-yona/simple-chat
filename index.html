@@ -1,176 +1,129 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="utf-8">
-<title>Firebase_version9_RealtimeDB(G'sACADEMY初学者用サンプル)</title>
+  <meta charset="utf-8">
+  <title>Firebase_version9_RealtimeDB サンプル改修版</title>
+  <style>
+    body {
+      padding: 0;
+      margin: 0;
+    }
+    .color-w {
+      color: #fff;
+    }
+    .chat-app {
+      max-width: 100vw;
+      max-height: 100vh;
+    }
+    .input-area {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      background: #333;
+      padding: 5px;
+    }
+    .input-area__name {
+      margin-bottom: 5px;
+    }
+    .input-area__name input {
+      border-radius: 30px;
+    }
+    .input-area__text-send {
+      display: flex;
+      gap: 5px;
+    }
+    .input-area__text {
+      width: calc(100% - 100px);
+      height: calc(1em + 5px);
+      border-radius: 30px;
+    }
+    .input-area__send-btn {
+      width: 80px;
+      border-radius: 30px;
+      background: #fff;
+      border: none;
+      cursor: pointer;
+      height: 24px;
+    }
+    .output-area {
+      height: calc(100vh - 120px);
+      overflow: auto;
+      padding: 10px;
+      background: #fff;
+      margin-bottom: 100px; /* 入力エリア分のスペースを確保 */
+    }
+  </style>
 </head>
 <body>
 
-<!-- コンテンツ表示画面 -->
-
-<div class="chat-app">
+  <div class="chat-app">
     <section class="input-area">
-        <div class="input-area__name"> <span class="color-w">名前：</span><input type="text" id="uname"> </div>
-        <div class="input-area__text-send">
-            <textarea id="text" cols="30" rows="10" class="input-area__text"></textarea>
-            <button id="send" class="input-area__send-btn">送信</button>
-        </div>
+      <div class="input-area__name">
+        <span class="color-w">名前：</span>
+        <input type="text" id="uname">
+      </div>
+      <div class="input-area__text-send">
+        <textarea id="text" cols="30" rows="2" class="input-area__text"></textarea>
+        <button id="send" class="input-area__send-btn">送信</button>
+      </div>
     </section>
     <section class="output-area">
-        <div id="output" class="output-content"></div>
+      <div id="output" class="output-content"></div>
     </section>
-</div>
-<!--/ コンテンツ表示画面 -->
+  </div>
 
-
-
-<!-- JQuery -->
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-<!-- JQuery -->
-
-
-<!--** 以下Firebase **-->
-<script type="module">
-  // Import the functions you need from the SDKs you need
+  <!-- JQuery -->
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <!-- Firebase -->
+  <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
-    import { getDatabase, ref, push, set, onChildAdded, remove, onChildRemoved } 
-    from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
+    import {
+      getDatabase, ref, push, set, onChildAdded
+    } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
 
-    // TODO: Add SDKs for Firebase products that you want to use
-    // https://firebase.google.com/docs/web/setup#available-libraries
-
-    // Your web app's Firebase configuration
     const firebaseConfig = {
-        apiKey: "AIzaSyDcCfg8Eu7G2Ak6u5yS5qyc3iC9D7xvFNs",
-        authDomain: "small-chat-test-app.firebaseapp.com",
-        projectId: "small-chat-test-app",
-        storageBucket: "small-chat-test-app.firebasestorage.app",
-        messagingSenderId: "447915138701",
-        appId: "1:447915138701:web:b2f2908dc472e897740cc4"
-};
+      apiKey: "AIzaSyDcCfg8Eu7G2Ak6u5yS5qyc3iC9D7xvFNs",
+      authDomain: "small-chat-test-app.firebaseapp.com",
+      projectId: "small-chat-test-app",
+      storageBucket: "small-chat-test-app.firebasestorage.app",
+      messagingSenderId: "447915138701",
+      appId: "1:447915138701:web:b2f2908dc472e897740cc4"
+    };
+    const app    = initializeApp(firebaseConfig);
+    const db     = getDatabase(app);
+    const dbRef  = ref(db, "chat");
 
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const db  = getDatabase(app); //RealtimeDBに接続
-    const dbRef = ref(db,"chat"); //RealtimeDB内の"chat"を使う
+    // ★ 出力エリアを先に取得
+    const outputArea  = document.querySelector('.output-area');
+    const outputInner = document.getElementById('output');
 
-    $("#send").on("click",function() {
-        const msg  = {
-            uname : $("#uname").val(),
-            text  : $("#text").val()
-        }
-        const newPostRef = push(dbRef); //ユニークKEYを生成
-        set(newPostRef, msg);           //"chat"にユニークKEYをつけてオブジェクトデータを登録
-
+    // 送信ボタン
+    $("#send").on("click", () => {
+      const msg = {
+        uname: $("#uname").val(),
+        text : $("#text").val()
+      };
+      const newRef = push(dbRef);
+      set(newRef, msg).then(() => {
+        // 送信後、確実にスクロール
+        outputArea.scrollTop = outputArea.scrollHeight;
+        $("#text").val(""); // テキストクリア
+      });
     });
 
-    onChildAdded(dbRef,function(data){
-        const msg = data.val();
-        const key = data.key;
-        let h = '<p>';
-            h += msg.uname;
-            h += '<br>';
-            h += msg.text;
-            h += '</p>';
-            $("#output").append(h);
-            //スクロールを一番下に
-            const outputArea = document.querySelector('.output-area');
-            outputArea.scrollTop = outputArea.scrollHeight;
-
+    // データベースに子が追加されたら描画
+    onChildAdded(dbRef, (data) => {
+      const msg = data.val();
+      const html = `
+        <p>
+          <strong>${msg.uname}</strong><br>
+          ${msg.text}
+        </p>`;
+      outputInner.insertAdjacentHTML('beforeend', html);
+      // 新着分までスクロール
+      outputArea.scrollTop = outputArea.scrollHeight;
     });
-</script>
-<style>
-body {
-    padding: 0;
-    margin: 0;
-}
-.color-w {
-    color: #fff;
-}
-.chat-app {
-    max-width: 100vw;
-    max-width: 100svw;
-    max-height: 100vh;
-    max-height: 100svh;
-}
-.input-area {
-    position: fixed;
-    bottom: 0;
-    width: 100%;
-    background: #333;
-    padding: 5px;
-    .input-area__name {
-        margin-bottom: 5px;
-        input {
-            border-radius: 30px;
-        }
-    }
-    .input-area__text-send {
-        display: flex;
-        gap: 5px;
-        .input-area__text {
-            width: calc(100% - 100px);
-            height: calc(1em + 5px);
-            border-radius: 30px;
-        }
-        .input-area__send-btn {
-            width: 80px;
-            border-radius: 30px;
-            background: #fff;
-            border: none;
-            cursor: pointer;
-            height: 24px;
-        }
-    }
-}
-.output-area {
-    height: calc(100svh - 100px);
-    overflow: auto;
-    padding: 10px;
-    background: #fff;
-}
-</style>
-
-
-
-
-
-
-
-
-
+  </script>
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
